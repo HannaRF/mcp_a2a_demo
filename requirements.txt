@@ -1,0 +1,5 @@
+mcp==1.9.4
+a2a-sdk==0.3.7
+uvicorn
+httpx
+openai
