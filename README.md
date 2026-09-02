@@ -39,13 +39,13 @@ The script seeds the database, starts all three components, streams live reasoni
 Useful if you want to watch each component's output independently.
 
 ```bash
-# Terminal 1 — Catalog Server (port 8100)
+# Terminal 1 - Catalog Server (port 8100)
 cd catalog_server && python server.py
 
-# Terminal 2 — Intern (port 9000)
+# Terminal 2 - Intern (port 9000)
 cd intern && LOG_REASONING=1 python server.py
 
-# Terminal 3 — Salesperson
+# Terminal 3 - Salesperson
 cd salesperson && python client.py "find me electronics under 20 euros"
 ```
 
@@ -93,22 +93,22 @@ The Salesperson never calls the database directly. It delegates via A2A to the I
 ## Where each protocol lives in the code
 
 **MCP layer:**
-- `catalog_server/server.py` — defines the four MCP tools (`@mcp.tool()`) and starts the server. Provider side.
-- `intern/mcp_client.py` — `mcp_session()` context manager that opens a connection to the Catalog Server. Consumer side.
+- `catalog_server/server.py` - defines the four MCP tools (`@mcp.tool()`) and starts the server. Provider side.
+- `intern/mcp_client.py` - `mcp_session()` context manager that opens a connection to the Catalog Server. Consumer side.
 
 **A2A layer:**
-- `intern/server.py` — builds the Agent Card and starts the A2A server.
-- `salesperson/client.py` — reads the Agent Card, submits a task, and streams the result.
+- `intern/server.py` - builds the Agent Card and starts the A2A server.
+- `salesperson/client.py` - reads the Agent Card, submits a task, and streams the result.
 
 **The agentic loop (where MCP and A2A meet):**
-- `intern/executor.py` — discovers MCP tools via `list_tools`, sends schemas to the LLM, executes tool calls via MCP, feeds results back, repeats until the LLM stops.
+- `intern/executor.py` - discovers MCP tools via `list_tools`, sends schemas to the LLM, executes tool calls via MCP, feeds results back, repeats until the LLM stops.
 
 ## Optional logging flags
 
 Set before starting the Intern (or pass inline: `LOG_REASONING=1 python server.py`):
 
-- **`LOG_REASONING=1`** — prints each tool call the LLM chooses and the MCP result.
-- **`LOG_SCHEMA=1`** — prints the full tool schemas discovered from the MCP server at the start of each request. Useful for demonstrating the "tool schema as contract" point: rename a parameter in `catalog_server/server.py` and the Intern adapts automatically, with no code change.
+- **`LOG_REASONING=1`** - prints each tool call the LLM chooses and the MCP result.
+- **`LOG_SCHEMA=1`** - prints the full tool schemas discovered from the MCP server at the start of each request. Useful for demonstrating the "tool schema as contract" point: rename a parameter in `catalog_server/server.py` and the Intern adapts automatically, with no code change.
 
 ## Troubleshooting
 
