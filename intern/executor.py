@@ -27,14 +27,15 @@ from a2a.utils import new_task, new_text_artifact
 
 from mcp_client import mcp_session
 
-MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.6-27b")
-LOG_REASONING = os.getenv("LOG_REASONING", "").lower() in ("1", "true", "yes")
+MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
+LOG_REASONING = os.getenv("LOG_REASONING", "1").lower() in ("1", "true", "yes")
 LOG_SCHEMA = os.getenv("LOG_SCHEMA", "").lower() in ("1", "true", "yes")
 
 SYSTEM_PROMPT = (
     "You are a catalog agent. You have access to tools that query a product "
     "catalog database. Use them to answer the user's question. Be concise and "
-    "format product listings clearly, including name, price, and category."
+    "format product listings clearly, including name, price, and category. "
+    "All prices are in euros (€)."
 )
 
 
@@ -114,7 +115,7 @@ async def _run_agentic_loop(user_text: str) -> str:
         while True:
             response = await llm.chat.completions.create(
                 model=MODEL,
-                max_tokens=1024,
+                max_tokens=900,
                 tools=tools,
                 messages=messages,
             )
@@ -175,6 +176,7 @@ async def _run_agentic_loop(user_text: str) -> str:
             return f"Unexpected finish reason: {choice.finish_reason}"
 
 
+
 class InternExecutor(AgentExecutor):
     """Executes the 'search-products' skill using an LLM agentic loop."""
 
@@ -185,16 +187,16 @@ class InternExecutor(AgentExecutor):
             await event_queue.enqueue_event(task)
 
         updater = TaskUpdater(event_queue, task.id, task.context_id)
-        await updater.start_work()
+        await updater.start_work()                                    # A2A: task → working
 
-        user_text = context.get_user_input()
-        answer = await _run_agentic_loop(user_text)
+        user_text = context.get_user_input()                          # A2A: extract user message
+        answer = await _run_agentic_loop(user_text)                   # MCP + LLM loop 
 
         await updater.add_artifact(
             [new_text_artifact(name="search-results", text=answer).parts[0]],
             name="search-results",
-        )
-        await updater.complete()
+        )                                                             # A2A: return result
+        await updater.complete()                                      # A2A: task → completed
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         task = context.current_task

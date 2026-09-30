@@ -9,6 +9,7 @@ Run (with catalog_server and intern already running):
     python client.py "find me products under 20 euros"
 """
 import asyncio
+import os
 import sys
 from uuid import uuid4
 
@@ -17,6 +18,7 @@ from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
 from a2a.types import Message, Part, Role, TextPart
 
 ANALYST_URL = "http://127.0.0.1:9000"
+QUIET = os.getenv("QUIET", "").lower() in ("1", "true", "yes")
 
 
 async def main(user_text: str) -> None:
@@ -24,8 +26,9 @@ async def main(user_text: str) -> None:
         # --- Step 1: Discovery ---
         resolver = A2ACardResolver(httpx_client=httpx_client, base_url=ANALYST_URL)
         agent_card = await resolver.get_agent_card()
-        print(f"[Salesperson] Discovered '{agent_card.name}': {agent_card.description}")
-        print(f"[Salesperson] Skills offered: {[s.id for s in agent_card.skills]}\n")
+        if not QUIET:
+            print(f"[Salesperson] Discovered '{agent_card.name}': {agent_card.description}")
+            print(f"[Salesperson] Skills offered: {[s.id for s in agent_card.skills]}\n")
 
         # --- Step 2: Task submission ---
         client = ClientFactory(ClientConfig(httpx_client=httpx_client)).create(agent_card)
@@ -36,22 +39,20 @@ async def main(user_text: str) -> None:
             parts=[Part(root=TextPart(text=user_text))],
         )
 
-        print(f"[Salesperson] Delegating task to Intern: \"{user_text}\"")
+        if not QUIET:
+            print(f"[Salesperson] Delegating task to Intern: \"{user_text}\"")
         final_text = None
         async for event in client.send_message(message):
-            # event is either a Message or a (Task, update) tuple depending
-            # on streaming vs. final result; we only care about artifacts.
             task = event[0] if isinstance(event, tuple) else event
             status = getattr(task, "status", None)
-            if status:
-                print(f"[Intern] task status -> {status.state}")
+            if status and not QUIET:
+                print(f"[Intern] task status -> {status.state.value}")
             artifacts = getattr(task, "artifacts", None) or []
             for artifact in artifacts:
                 for part in artifact.parts:
                     if hasattr(part.root, "text"):
                         final_text = part.root.text
 
-        print("\n--- Artifact returned by Intern ---")
         print(final_text or "(no artifact returned)")
 
 

@@ -29,6 +29,9 @@ source "$SCRIPT_DIR/venv/bin/activate"
 CATALOG_PID=""
 INTERN_PID=""
 TAIL_PID=""
+QUIET="${QUIET:-0}"
+
+log() { [[ "$QUIET" != "1" ]] && echo "$@" || true; }
 
 cleanup() {
     echo ""
@@ -89,28 +92,28 @@ fi
 
 # -- Catalog Server ------------------------------------------------------------
 
-echo "[demo] Starting Catalog Server (port 8100)..."
+log "[demo] Starting Catalog Server (port 8100)..."
 (cd "$SCRIPT_DIR/catalog_server" && python server.py) > $SCRIPT_DIR/logs/catalog.log 2>&1 &
 CATALOG_PID=$!
 wait_for_port 8100 "Catalog Server"
 
 # -- Intern -------------------------------------------------------------------
 
-echo "[demo] Starting Intern (port 9000)..."
-(cd "$SCRIPT_DIR/intern" && LOG_REASONING=1 python server.py) > $SCRIPT_DIR/logs/intern.log 2>&1 &
+log "[demo] Starting Intern (port 9000)..."
+(cd "$SCRIPT_DIR/intern" && LOG_REASONING=${LOG_REASONING:-1} python -u server.py) > $SCRIPT_DIR/logs/intern.log 2>&1 &
 INTERN_PID=$!
 wait_for_port 9000 "Intern"
 
-# Stream only the [Intern] reasoning lines to the terminal so the audience
-# can see the internal MCP tool calls alongside the Salesperson output.
-tail -f $SCRIPT_DIR/logs/intern.log | grep --line-buffered "^\[Intern\]" &
-TAIL_PID=$!
+# Stream [Intern] reasoning lines to terminal (skipped in QUIET mode)
+if [[ "$QUIET" != "1" ]]; then
+    tail -f $SCRIPT_DIR/logs/intern.log | grep --line-buffered "^\[Intern\]" &
+    TAIL_PID=$!
+fi
 
 # -- Salesperson ---------------------------------------------------------------
 
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+[[ "$QUIET" != "1" ]] && echo "" && echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 (cd "$SCRIPT_DIR/salesperson" && python client.py "$QUERY")
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "[demo] Full logs at: $SCRIPT_DIR/logs/catalog.log  $SCRIPT_DIR/logs/intern.log"
+[[ "$QUIET" != "1" ]] && echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log ""
+log "[demo] Full logs at: $SCRIPT_DIR/logs/catalog.log  $SCRIPT_DIR/logs/intern.log"
